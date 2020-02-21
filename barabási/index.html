@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Publications from Barabási Lab</title>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="style.css">
+
+</head>
+
+<body></body>
+
+<div class="container">
+    <aside class="intro">
+        <h1>Everything you need to know about <i>Barabási Lab</i></h1>
+        <p> To visualize the influence and success of the Center for Complex Network Research, I was driven by the following questions when designing
+            my work -- Which year or month was the most productive one? What was the most cited publication? Who were behind those publications? 
+            Which publications ended up getting published in <i>Nature</i> or <i>Science</i> journal?</p>
+
+        <p>I visualized each publication as a circle on a radial chart and provide sufficient details regarding the title, authors, citations, etc. 
+            The size of the circle is proportional to the number of citations.
+            A circle with a yellow border indicates that it was published in the <i>Nature</i> or <i>Science</i>
+            journal.
+        </p>
+        <div id="circle_notations"></div>
+        <p>I removed the year columns with null and "1970" entries. From the radial chart, we can see that most of the publications were published in January! Besides, between 1989 and 2003, 
+            several publications gain an enormous amount of citations.
+        </p>
+        <p>When hovering over each circle, user can see the authors of the publications stemming from the rood node. The name of the publication and its number of citations will also show up at the center.</p>
+        <div id="treemap_notations"></div>
+        <p>The top rectangles is proportional to the number of yearly publications.</p>
+        <div id="bar_notations"></div>
+
+        <div>
+            <p>Things that can be improved:</p>
+
+            <ul>
+                <li>Missing Data: Other than excluding data with the missing years from the visualization, what could be
+                    a better way to present the missing values while not misleading the viewer?</li>
+                <li>Yearly Comparison: The radial chart clearly demonstrates that "January" was the most productive
+                    month! But it also makes it difficult for readers to compare the total number of yearly
+                    publications. I use a radial small bar chart, attached on the edge of the radial chart, to offer the
+                    numbers. What could be a more intuitive way for users to do the comparison? </li>
+                <li>Multiple Authors: When presenting publication with more than 20 authors, the author list will become so long that it will exceed the boundaries of the SVG.</li>
+            </ul>
+        </div>
+        
+
+    </aside>
+    <div id="chart"></div>
+</div>
+
+
+<script>
+    // Chart begins here
+    // http://stackoverflow.com/a/929107
+    var reMap = function (oldValue) {
+        var oldMin = 1989,
+            oldMax = 2019,
+            newMin = 0,
+            newMax = (Math.PI * 2),
+            newValue = -(((oldValue - newMax * 1.2 - oldMin) * (newMax - newMin)) / (oldMax - oldMin)) +
+            newMin;
+
+        return newValue;
+    }
+
+    var promises = [
+        d3.json("data/barabasi_publications_withdate_withoutNull.json"),
+        d3.csv("data/publications_count_by_year.csv")
+    ];
+
+    Promise.all(promises).then(function (dataset) {
+
+        var main_data = dataset[0];
+        var yearly_data = dataset[1];
+
+        var width = document.querySelector("#chart").clientWidth,
+            height = document.querySelector("#chart").clientHeight,
+            radius = Math.min(width, height) / 2 - 120; // radius of the whole chart
+
+        // scale background circles
+        var r = d3.scaleLinear()
+            .domain([0, 12])
+            .range([radius / 2.5, radius]);
+
+        // scale for a radial line chart but didn't get used at the end
+        // var rForYearlyLineChart = d3.scaleLinear()
+        //     .domain([0, d3.max(yearly_data, d => +d["publications_counts"])])
+        //     .range([radius / 2.5, radius]);
+
+        // scale for the circle size
+        var rScale = d3.scaleSqrt()
+            .domain([d3.min(main_data, d => d["citations"]), d3.max(main_data, d => d["citations"])])
+            .range([3, 30])
+
+        // scale for the background axis but didnt get used at the end
+        // var aScale = d3.scaleLinear()
+        //     .domain([0, d3.max(yearly_data, d => +d["publications_counts"])])
+        //     .range([radius / 2.5, radius]);
+
+        // scale for the top bar charts
+        var lToTopWordScale = d3.scaleLinear()
+            .domain([0, d3.max(yearly_data, d => +d.publications_counts)])
+            .range([r(14.5), r(17.5)])
+
+        var monthScale = d3.scaleOrdinal()
+            .domain([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+            .range(["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]);
+
+        var svg = d3.select("#chart").append('svg')
+            .attr('width', width)
+            .attr('height', height)
+            .append('g')
+            .attr('transform', 'translate(' + width / 2 + ',' + height / 2 + ')'); // center the circle 
+
+        // draww background cirlcles 
+        var gr = svg.append('g')
+            .attr('class', 'r axis')
+            .selectAll('g')
+            .data(r.ticks(12).slice(1))
+            .enter().append('g');
+
+        var monthlyCircle = gr.append('circle')
+            .attr('r', r)
+            .style("opacity", 0.1);
+
+        // append month texts
+        var grText = gr.append("text")
+            .attr("class", "monthLabel")
+            .text(function (d, i) {
+                if (d == 0) {
+                    return "Month"
+                } else {
+                    return monthScale(d);
+                }
+            })
+            .attr("y", function (d) {
+                return -r(d);
+            })
+            .style("opacity", 0.5)
+
+
+        // draw background axes
+        var ga = svg.append('g')
+            .attr('class', 'a axis')
+            .selectAll('g')
+            .data(d3.range(-90, 270, 12)) // line density
+            .enter().append('g')
+            .attr('transform', function (d) {
+                return 'rotate(' + (d - 0.5) + ')';
+            });
+        
+        var yearlyBar = ga.append('line')
+            .attr("x2", radius)
+            .attr("class", "yearlyBar")
+            // .attr("x1", r(r.ticks(12)[1]))
+            // .attr('x2', function (d, i) {
+
+            //     if (d == -90) {
+            //         return 0;
+            //     } else {
+
+            //         for (var j = 0; j < yearly_data.length; j++) {
+
+            //             if ((i - 1) == j) {
+            //                 return aScale(parseInt(yearly_data[j].publications_counts))
+            //             }
+            //         }
+            //     }
+            // })
+            // .attr("y1", -0.5)
+            // .attr("y2", -0.5)
+            .style("opacity", function (d) {
+                if (d == -90) {
+                    return 0;
+                } else {
+                    return 0.1
+                }
+            });
+        
+        // append year labels
+        var gaYearText = ga
+            .append("text")
+            .attr("class", "yearLabel")
+            .text(function (d, i) {
+                if (i == 0) {
+                    return " ";
+                } else {
+
+                    for (var j = 0; j < yearly_data.length; j++) {
+                        if ((i - 1) == +j) {
+                            return parseInt(yearly_data[j].year)
+                        }
+                    }
+                }
+            })
+            .attr("fill", "white")
+            .attr("x", r(13.5))
+            .attr("transform", `rotate(90, ${r(13.5)}, 0)`)
+            .style("opacity", 0.5)
+        
+        // draw upper bar chart
+        var gaLineToTopWord = ga.append('line')
+            .attr("x1", r(14.5))
+            .attr('x2', function (d, i) {
+
+                if (d == -90) {
+                    return 0;
+                } else {
+
+                    for (var j = 0; j < yearly_data.length; j++) {
+
+                        if ((i - 1) == j) {
+                            return lToTopWordScale(parseInt(yearly_data[j].publications_counts))
+                        }
+                    }
+                }
+            })
+            .attr("y1", -0.5)
+            .attr("y2", -0.5)
+            .style("opacity", function (d) {
+                if (d == -90) {
+                    return 0;
+                } else {
+                    return 0.15
+                }
+            })
+            .attr("stroke-width", 20)
+            .on("mouseover", function (d, i) {
+
+                d3.select(this).style("opacity", function (d) {
+                    if (d == -90) {
+                        return 0;
+                    } else {
+                        return 0.5
+                    }
+                })
+
+            })
+            .on("mouseout", function (d, i) {
+
+                d3.select(this).style("opacity", function (d) {
+                    if (d == -90) {
+                        return 0;
+                    } else {
+                        return 0.15
+                    }
+                });
+
+            })
+
+        // append bar's number
+        var gaTopWord = ga
+            .append("text")
+            .attr("class", "topWord")
+            .text(function (d, i) {
+                if (i == 0) {
+                    return " ";
+                } else {
+
+                    for (var j = 0; j < yearly_data.length; j++) {
+                        if ((i - 1) == +j) {
+                            return yearly_data[j].publications_counts;
+                        }
+                    }
+                }
+            }).attr("fill", "white")
+            .attr("x", function (d, i) {
+
+                if (d == -90) {
+                    return 0;
+                } else {
+
+                    for (var j = 0; j < yearly_data.length; j++) {
+
+                        if ((i - 1) == j) {
+                            return lToTopWordScale(parseInt(yearly_data[j].publications_counts)) + 2
+                        }
+                    }
+                }
+            })
+            .attr("transform", function (d, i) {
+
+                if (d == -90) {
+                    return 0;
+                } else {
+
+                    for (var j = 0; j < yearly_data.length; j++) {
+
+                        if ((i - 1) == j) {
+                            return `rotate(90, ${lToTopWordScale(parseInt(yearly_data[j].publications_counts))+2},
+                                0)`
+                        }
+                    }
+                }
+            })
+            .style("opacity", 0.5)
+
+        // block center with a black circle
+        var gr_block_center = svg.append('g').attr("class", "block-center-circle");
+
+        gr_block_center.append('circle')
+            .attr('r', radius / 2.5)
+            .attr("fill", "black");
+        
+        // radial line chart generator but didnt get used
+        // var yearlyLineGenerator = d3.lineRadial()
+        //     .radius(function (d) {
+        //         return rForYearlyLineChart(+d.publications_counts)
+        //     })
+        //     .angle(function (d) {
+        //         return -reMap(+d.year) + Math.PI / 2;
+        //     });
+
+        // var yearlyLine = svg.append("path")
+        //     .datum(yearly_data)
+        //     .attr("fill", "none")
+        //     .attr("stroke", "rgba(255,255,255,0.3)")
+        //     .attr("d", yearlyLineGenerator);
+
+
+        // line generator for drawing circles on the radial chart     
+        var line = d3.lineRadial()
+            .radius(function (d) {
+                return r(d["month"]);
+            })
+            .angle(function (d) {
+                return -reMap(d["year"]) + Math.PI / 2;
+            });
+        
+        main_data.sort(function (a, b) {
+            if (a.citations > b.citations)
+                return -1;
+            if (a.citations < b.citations) return 1;
+            return 0;
+        });
+
+        // draw the circles
+        var circle = svg.selectAll('point')
+            .data(main_data)
+            .enter()
+            .append('circle')
+            .attr('class', 'point')
+            .attr('transform', function (d) {
+
+                // generate coordinates for the cicrcle using the above line generator
+                var coors = line([d]).slice(1).slice(0, -1); // removes 'M' and 'Z' from string
+                return 'translate(' + coors + ')'
+            })
+            .attr('r', function (d) {
+                return rScale(d["citations"]);
+            })
+            .attr("fill", "rgba(8,196,208)")
+            .style("opacity", 0.4)
+            .attr("stroke", function (d) {
+                if (d.journal == "Nature" || d.journal == "Science") {
+                    return "rgba(247, 202, 24, 1)"
+                } else {
+                    return "none"
+                }
+            })
+            .attr("stroke-width", 1.5)
+            .on("mouseover", function (d) {
+
+                circle.style("opacity", 0.08);
+                yearlyBar.style("opacity", 0.02);
+                grText.style("opacity", 0.1);
+                monthlyCircle.style("opacity", 0.02);
+                gaTopWord.style("opacity", 0.1);
+                gaYearText.style("opacity", 0.1);
+                gaLineToTopWord.style("opacity", 0);
+
+                d3.select(this)
+                .style("opacity", 1)
+                .attr("stroke-width", 2.5);
+
+                // when mouseover, show the title
+                
+                var fontSize = 14;
+
+                var centerText = gr_block_center.append("text")
+                    .append("tspan")
+                    .attr("class", "centerText")
+                    .attr("fill", "white")
+                    .attr("text-anchor", "middle")
+                    .attr("font-size", fontSize);
+
+                var words = d.title + ", citations: " + d.citations
+                words = words.split(" ");
+
+                var tspanLine = 0;
+
+                words.forEach(function (w) {
+                    var previousWords = centerText.text();
+                    centerText.text(previousWords + " " + w);
+
+                    if (centerText.node().getBBox().width > radius / 2) {
+                        tspanLine++
+                        centerText.text(previousWords);
+                        centerText = gr_block_center.append("text").append("tspan")
+                            .attr("class", "centerText")
+                            .attr("y", tspanLine * ( fontSize +3 ))
+                            .attr("fill", "white")
+                            .attr("text-anchor", "middle")
+                            .attr("font-size", fontSize)
+                            .text(" " + w);
+                    }
+                })
+
+                // adjust texts position
+                var textMoveUp = ((d3.selectAll(".centerText")._groups["0"].length) * (fontSize - 3)) /2;
+                gr_block_center.selectAll("text").attr("transform", `translate(0, ${-textMoveUp})`);
+
+                // create a new data structure for the authors tree map 
+                var author_data = [];
+
+                // calculate the selected circle's cx and cy
+                var coors = line([d]).slice(1).slice(0, -1).split(",");
+                var coorsArray = JSON.parse("[" + coors + "]");
+                var cx = coorsArray[0];
+                var cy = coorsArray[1];
+
+                // calculate the selected circle's width and height 
+                var circle_width = d3.select(this).node().getBBox().width;
+                var circle_height = d3.select(this).node().getBBox().height;
+
+                // Expand the size of the tree map based on the number of authors
+                if (d.num_of_author >= 10) {
+                    circle_height = d3.select(this).node().getBBox().height + 100;
+                }
+
+                if (d.num_of_author >= 20) {
+                    circle_height = d3.select(this).node().getBBox().height + 300;
+                }
+
+                if (d.num_of_author >= 30) {
+                    circle_height = d3.select(this).node().getBBox().height + 500;
+                }
+
+                // the first function to create the data structure
+                function a() {
+                    author_data.push({
+
+                        name: d.title,
+                        parent: null,
+                        children: []
+
+                    })
+                }
+
+                // the second function to put variables in to the children data 
+                function b() {
+
+                    for (var j = 0; j < d.num_of_author; j++) {
+                        author_data[0].children.push({
+                            name: d["author"][j],
+                            parent: d.title
+                        })
+                    }
+
+                }
+
+                // execute a first then b
+                a();
+                b();
+
+                // initialize the tree map
+                var treemap = d3.tree()
+                    .size([circle_height + 100, circle_width + 100])
+
+                // create the hierarchical data structure
+                var nodes = d3.hierarchy(author_data[0], function (d, i) {
+                    return d.children;
+                })
+
+                nodes = treemap(nodes);
+
+                // adds the links between the nodes
+                var link = svg.selectAll(".link")
+                    .data(nodes.descendants().slice(1))
+                    .enter().append("path")
+                    .attr("class", "link")
+                    .attr("d", function (d) {
+                        // for the right side circles
+                        if (cx > 0) {
+                            return "M" + (cx - d.parent.y + d.y) + "," + (cy - d.parent.x + d.x) +
+                                "C" + (cx - d.parent.y + (d.y + d.parent.y) / 2) + "," + (cy - d
+                                    .parent.x + d.x) +
+                                " " + (cx - d.parent.y + (d.y + d.parent.y) / 2) + "," + (cy - d
+                                    .parent.x + d.parent.x) +
+                                " " + (cx) + "," + (cy); // move root node to cx and cy 
+                        } else { // for the left side circles 
+                            return "M" + (cx - d.parent.y + d.y - 2 * (cx - d.parent.y + d.y -
+                                    cx)) + "," + (cy - d.parent.x + d.x) +
+                                "C" + (cx - d.parent.y + (d.y + d.parent.y) / 2 - 2 * (cx - d.parent
+                                    .y + (d.y + d.parent.y) / 2 - cx)) + "," + (cy - d.parent.x + d
+                                    .x) +
+                                " " + (cx - d.parent.y + (d.y + d.parent.y) / 2 - 2 * (cx - d.parent
+                                    .y + (d.y + d.parent.y) / 2 - cx)) + "," + (cy - d.parent.x + d
+                                    .parent.x) +
+                                " " + (cx) + "," + (cy); // move root node to cx and cy
+                        }
+                    })
+                    .attr("stroke", "white")
+                    .style("opacity", 0.5)
+                    .attr("fill", "none");
+
+                // adds each node as a group
+                var node = svg.selectAll(".node")
+                    .data(nodes.descendants().slice(1))
+                    .enter().append("g")
+                    .attr("class", "node")
+                    .attr("transform", function (d) {
+
+                        if (cx > 0) {
+                            return "translate(" + (cx - d.parent.y + d.y) + "," + (cy - d.parent.x +
+                                d.x) + ")";
+                        } else {
+                            return "translate(" + (cx - d.parent.y + d.y - 2 * (cx - d.parent.y + d
+                                .y - cx)) + "," + (cy - d.parent.x + d.x) + ")";
+                        }
+                    });
+
+                // adds the circle to the node
+                node.append("circle")
+                    .attr("r", 1)
+                    .style("stroke", "white")
+                    .style("fill", "white");
+
+                // adds the text to the node
+                node.append("text")
+                    .attr("dy", ".35em")
+                    .attr("dx", function (d) {
+
+                        if (cx >= 0) {
+                            return "0.35em";
+                        } else {
+                            return "-0.35em"
+                        }
+                    })
+                    .style("text-anchor", function (d) {
+
+                        if (cx >= 0) {
+                            return "start";
+                        } else {
+                            return "end"
+                        }
+                    })
+                    .text(function (d) {
+                        if (d.parent == null) {
+                            return " "
+                        } else {
+                            return d.data.name;
+                        }
+                    })
+                    .attr("fill", "white")
+                    .style("font-size", "12px");
+
+            })
+            .on("mouseout", function (d) {
+                gr_block_center.selectAll("text").remove();
+                svg.selectAll(".link").remove();
+                svg.selectAll(".node").remove();
+                circle.style("opacity", 0.4).attr("stroke-width", 1.5);
+                grText.style("opacity", 0.5);
+                monthlyCircle.style("opacity", 0.1);
+                yearlyBar.style("opacity", function (d) {
+                    if (d == -90) {
+                        return 0;
+                    } else {
+                        return 0.1
+                    }
+                });
+                gaTopWord.style("opacity", 0.5)
+                gaYearText.style("opacity", 0.5);
+                gaLineToTopWord.style("opacity", function (d) {
+                    if (d == -90) {
+                        return 0;
+                    } else {
+                        return 0.15;
+                    }
+                });
+
+
+            })
+
+        // Circle notatoins
+        var circleNotationWidth = document.querySelector("#circle_notations").clientWidth;
+        var circleNotationHeight = document.querySelector("#circle_notations").clientHeight;
+        var circleNotationSvg = d3.select("#circle_notations").append("svg")
+            .attr("width", circleNotationWidth)
+            .attr("height", circleNotationHeight)
+            .append("g")
+            .attr("transform", `translate(0, ${circleNotationHeight/2})`);
+
+        var circleDemo = circleNotationSvg.selectAll("circle")
+            .data(d3.range(5))
+            .enter().append("circle")
+            .attr("id", function (d) {
+                if (d == 4) {
+                    return "special"
+                }
+            })
+            .attr("cx", function (d, i) {
+                return 20 + (rScale(d * 1000) + 20) * i + rScale(d * 1000)
+            })
+
+            .attr("r", function (d, i) {
+                return rScale((d + 1) * 1000)
+            })
+            .attr("fill", "rgba(8,196,208, 0.5)")
+            .attr("stroke", function (d) {
+                if (d == 4) {
+                    return "rgba(247, 202, 24, 1)"
+                } else {
+                    return "none"
+                }
+            })
+
+
+        // treemap demo 
+        var treeDemoData = {
+            "name": "root",
+            "children": [{
+                    "name": "Author 1",
+                },
+                {
+                    "name": "Author 2",
+                }
+            ]
+        };
+
+        // Circle notatoins
+        var treeNotationWidth = document.querySelector("#treemap_notations").clientWidth;
+        var treeNotationHeight = document.querySelector("#treemap_notations").clientHeight;
+        var treeNotationSvg = d3.select("#treemap_notations").append("svg")
+            .attr("width", treeNotationWidth)
+            .attr("height", treeNotationHeight)
+            .append("g")
+            .attr("transform", `translate(30, ${treeNotationHeight/4})`);
+
+        var treemapDemo = d3.tree().size([treeNotationHeight - 50, treeNotationWidth - 200]);
+
+        var nodesDemo = d3.hierarchy(treeDemoData, function (d, i) {
+            return d.children;
+        })
+
+        nodesDemo = treemapDemo(nodesDemo);
+
+
+        // adds the links between the nodes
+        var linkDemo = treeNotationSvg.selectAll(".link")
+            .data(nodesDemo.descendants().slice(1))
+            .enter().append("path")
+            .attr("class", "link")
+            .attr("d", function (d) {
+
+                return "M" + (d.y) + "," + (d.x) +
+                    "C" + ((d.y + d.parent.y) / 2) + "," + d.x +
+                    " " + ((d.y + d.parent.y) / 2) + "," + d.parent.x +
+                    " " + (d.parent.y) + "," + (d.parent.x);
+
+            })
+            .attr("stroke", "white")
+            .style("opacity", 0.5)
+            .attr("fill", "none");
+
+        // adds each node as a group
+        var nodeDemo = treeNotationSvg.selectAll(".node")
+            .data(nodesDemo.descendants())
+            .enter().append("g")
+            .attr("class", "node")
+            .attr("transform", function (d) {
+
+                return "translate(" + d.y + "," + d.x + ")";
+
+            });
+
+        // adds the circle to the node
+        nodeDemo.append("circle")
+            .attr("r", function (d, i) {
+                if (i == 0) {
+                    return 10;
+                } else {
+                    return 1;
+                }
+            })
+            .style("stroke", function (d, i) {
+                if (i == 0) {
+                    return "none";
+                } else {
+                    return "white";
+                }
+            })
+            .style("fill", function (d, i) {
+                if (i == 0) {
+                    return "rgba(8,196,208, 0.6)";
+                } else {
+                    return "white";
+                }
+            });
+
+        // adds the text to the node
+        nodeDemo.append("text")
+            .attr("dy", ".35em")
+            .attr("dx", "0.35em")
+            .style("text-anchor", "start")
+            .text(function (d) {
+                if (d.parent == null) {
+                    return " "
+                } else {
+                    return d.data.name;
+                }
+            })
+            .attr("fill", "white")
+            .style("font-size", "12px");
+
+        // bar notatoins
+        var barNotationWidth = document.querySelector("#bar_notations").clientWidth;
+        var barNotationHeight = document.querySelector("#bar_notations").clientHeight;
+        var barNotationSvg = d3.select("#bar_notations").append("svg")
+            .attr("width", barNotationWidth)
+            .attr("height", barNotationHeight)
+            .append("g");
+
+        var barDemo = barNotationSvg.selectAll("rect")
+            .data(d3.range(5))
+            .enter().append("rect")
+            .attr("x", function (d) {
+                return 20 + d * 20 + d * 8
+            })
+            .attr("y", function (d) {
+                return 8 * (d + 4)
+            })
+            .attr("height", function (d) {
+                return barNotationHeight - (8 * (d + 4))
+            })
+            .attr("width", 20)
+            .attr("fill", "rgba(255,255,255, 0.2)")
+
+        var barDemoText = barNotationSvg.selectAll("text")
+            .data(d3.range(5))
+            .enter().append("text")
+            .attr("class", "bar-demo-text")
+            .attr("x", function (d) {
+                return 30 + d * 20 + d * 8;
+            })
+            .attr("y", function (d) {
+                return 8 * (d + 4) - 2
+            })
+            .style("opacity", 0.5)
+            .text(function (d) {
+                return -(d-20)-d*3;
+            })
+            .attr("text-anchor", "middle")
+
+    });
+</script>
+</body>
+
+</html>

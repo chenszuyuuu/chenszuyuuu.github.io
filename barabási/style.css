@@ -1,0 +1,84 @@
+* {
+  box-sizing: border-box;
+}
+
+ body {
+   font-family: Arial, Helvetica, sans-serif;
+   font-size: 15px;
+   line-height: 1.4em;
+   background-color: #000;
+   color: rgba(255, 255, 255, 0.9);
+ }
+
+ h1 {
+   font-family: Georgia, 'Times New Roman', Times, serif;
+   line-height: 1.5em;
+   font-size: 22px;
+ }
+
+ .container {
+   display: flex;
+ }
+
+ aside {
+   flex: 1;
+   padding: 1.5em;
+ }
+
+ div,
+ li {
+   margin-top: 2em;
+ }
+
+ #circle_notations,
+ #treemap_notations,
+ #bar_notations {
+   width: 100%;
+   height: 20vh;
+ }
+
+ #bar_notations,
+ #circle_notations {
+   height: 10vh;
+ }
+
+ #chart {
+   position: sticky;
+   position: -webkit-sticky;
+   top: 0;
+   flex: 3;
+   width: 100%;
+   height: 100vh;
+   text-align: center;
+ }
+
+ .point {
+   /* mix-blend-mode: multiply; */
+ }
+
+ .monthLabel,
+ .yearLabel,
+ .topWord,
+ .bar-demo-text {
+   font: 9px sans-serif;
+   text-anchor: middle;
+   fill: white;
+ }
+
+ .axis line {
+   fill: none;
+   stroke: #ebebeb;
+ }
+
+ .axis circle {
+   fill: none;
+   stroke: #aaa;
+ }
+
+ .axis:last-of-type circle {
+   stroke: #333;
+ }
+
+ .centerText {
+   transform: translateY(-50%);
+ }

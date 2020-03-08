@@ -227,8 +227,8 @@ figcaption {
 .heading-jumbo {
   margin-top: 10px;
   margin-bottom: 10px;
-  font-size: 58px;
-  line-height: 88px;
+  font-size: 64px;
+  line-height: 76px;
   text-transform: none;
 }
 
@@ -1015,8 +1015,8 @@ figcaption {
     text-align: center;
   }
   .heading-jumbo {
-    font-size: 52px;
-    line-height: 75px;
+    font-size: 66px;
+    line-height: 70px;
     text-align: left;
   }
   .paragraph-tiny.cc-paragraph-tiny-light {
@@ -1257,8 +1257,8 @@ figcaption {
     text-align: center;
   }
   .heading-jumbo {
-    font-size: 36px;
-    line-height: 70px;
+    font-size: 48px;
+    line-height: 60px;
   }
   .paragraph-light {
     margin-right: 0px;
@@ -1455,8 +1455,8 @@ figcaption {
     max-width: none;
   }
   .heading-jumbo {
-    font-size: 24px;
-    line-height: 52px;
+    font-size: 38px;
+    line-height: 45px;
     text-align: left;
   }
   .paragraph-light {
